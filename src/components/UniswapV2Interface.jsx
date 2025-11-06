@@ -3,6 +3,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { ethers } from 'ethers';
 
 // Chain configurations
+// NOTE: Only Sepolia is currently enabled. Base and Unichain are disabled in the UI.
+// To enable other chains, remove the 'disabled' attribute from the <option> elements in the chain selector.
 const CHAIN_CONFIG = {
   sepolia: {
     chainId: 11155111,
@@ -13,6 +15,7 @@ const CHAIN_CONFIG = {
     factoryAddress: '0x7E0987E5b3a30e3f2828572Bb659A548460a3003',
     nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }
   },
+  // Base - Currently disabled in UI
   base: {
     chainId: 8453,
     name: 'Base',
@@ -22,6 +25,7 @@ const CHAIN_CONFIG = {
     factoryAddress: '0x8909Dc15e40173Ff4699343b6eB8132c65e18ec6',
     nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }
   },
+  // Unichain Sepolia - Currently disabled in UI
   unichain: {
     chainId: 1301,
     name: 'Unichain Sepolia',
@@ -900,8 +904,8 @@ const UniswapV2Interface = () => {
                 className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white hover:border-pink-400 dark:hover:border-pink-500 focus:outline-none focus:border-pink-500 transition-colors font-medium"
               >
                 <option value="sepolia">Sepolia</option>
-                <option value="base">Base</option>
-                <option value="unichain">Unichain Sepolia</option>
+                <option value="base" disabled>Base (Coming Soon)</option>
+                <option value="unichain" disabled>Unichain Sepolia (Coming Soon)</option>
               </select>
 
               {/* Connect Wallet Button */}
