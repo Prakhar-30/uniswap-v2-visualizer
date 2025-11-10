@@ -3,8 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { ethers } from 'ethers';
 
 // Chain configurations
-// NOTE: Only Sepolia is currently enabled. Base and Unichain are disabled in the UI.
-// To enable other chains, remove the 'disabled' attribute from the <option> elements in the chain selector.
+// NOTE: Sepolia and Base are enabled. Unichain is disabled in the UI.
 const CHAIN_CONFIG = {
   sepolia: {
     chainId: 11155111,
@@ -15,14 +14,14 @@ const CHAIN_CONFIG = {
     factoryAddress: '0x7E0987E5b3a30e3f2828572Bb659A548460a3003',
     nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }
   },
-  // Base - Currently disabled in UI
+  // Base Mainnet - Uniswap V2
   base: {
     chainId: 8453,
-    name: 'Base',
+    name: 'Base Mainnet',
     rpcUrl: 'https://mainnet.base.org',
     explorerUrl: 'https://basescan.org',
-    routerAddress: '0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24',
-    factoryAddress: '0x8909Dc15e40173Ff4699343b6eB8132c65e18ec6',
+    routerAddress: '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
+    factoryAddress: '0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6',
     nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }
   },
   // Unichain Sepolia - Currently disabled in UI
@@ -904,7 +903,7 @@ const UniswapV2Interface = () => {
                 className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white hover:border-pink-400 dark:hover:border-pink-500 focus:outline-none focus:border-pink-500 transition-colors font-medium"
               >
                 <option value="sepolia">Sepolia</option>
-                <option value="base" disabled>Base (Coming Soon)</option>
+                <option value="base">Base Mainnet</option>
                 <option value="unichain" disabled>Unichain Sepolia (Coming Soon)</option>
               </select>
 
