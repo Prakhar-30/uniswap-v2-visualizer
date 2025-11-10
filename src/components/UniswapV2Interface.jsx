@@ -1193,8 +1193,8 @@ const UniswapV2Interface = () => {
 
                   {priceHistory.length > 0 ? (
                     <div className={`transition-all duration-500 ${historyProgress > 0 && historyProgress < 100 ? 'opacity-60 blur-sm' : 'opacity-100 blur-0'}`}>
-                      <ResponsiveContainer width="100%" height={400}>
-                        <LineChart data={priceHistory}>
+                      <ResponsiveContainer width="100%" height={450}>
+                        <LineChart data={priceHistory} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-600" />
                           <XAxis
                             dataKey="date"
@@ -1204,12 +1204,24 @@ const UniswapV2Interface = () => {
                             height={90}
                             interval="preserveStartEnd"
                             className="dark:fill-gray-300"
+                            label={{
+                              value: 'Time',
+                              position: 'insideBottom',
+                              offset: -50,
+                              style: { fontSize: 14, fontWeight: 'bold', fill: '#666' }
+                            }}
                           />
                           <YAxis
                             tick={{ fontSize: 11 }}
                             domain={['auto', 'auto']}
                             tickFormatter={(value) => value.toFixed(8)}
                             className="dark:fill-gray-300"
+                            label={{
+                              value: `Price (1 ${pairData.token0.symbol} = ${pairData.token1.symbol})`,
+                              angle: -90,
+                              position: 'insideLeft',
+                              style: { fontSize: 14, fontWeight: 'bold', fill: '#666', textAnchor: 'middle' }
+                            }}
                           />
                           <Tooltip
                             contentStyle={{
@@ -1220,14 +1232,17 @@ const UniswapV2Interface = () => {
                             }}
                             formatter={(value, name) => {
                               if (name.includes('Actual')) {
-                                return [value ? value.toFixed(8) : 'N/A', 'Price'];
+                                return [value ? `${value.toFixed(8)} ${pairData.token1.symbol}` : 'N/A', `1 ${pairData.token0.symbol} =`];
                               } else {
-                                return [value ? value.toFixed(8) : 'N/A', 'Predicted'];
+                                return [value ? `${value.toFixed(8)} ${pairData.token1.symbol}` : 'N/A', 'Predicted'];
                               }
                             }}
                             labelFormatter={(label) => `Time: ${label}`}
                           />
-                          <Legend />
+                          <Legend
+                            wrapperStyle={{ paddingTop: '10px' }}
+                            iconType="line"
+                          />
                           {/* Actual Price Line */}
                           <Line
                             type="monotone"
@@ -1235,7 +1250,7 @@ const UniswapV2Interface = () => {
                             stroke="#ec4899"
                             strokeWidth={2.5}
                             dot={false}
-                            name={`${pairData.token0.symbol}/${pairData.token1.symbol} (Actual)`}
+                            name={`Price: 1 ${pairData.token0.symbol} = ${pairData.token1.symbol} (Actual)`}
                             animationDuration={300}
                             connectNulls={false}
                           />
