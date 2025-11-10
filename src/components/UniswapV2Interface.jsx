@@ -486,12 +486,29 @@ const UniswapV2Interface = () => {
     }
 
     try {
+      // First, check if the address is actually a contract
+      const code = await provider.getCode(pairAddress);
+      if (code === '0x') {
+        setError(`The address ${pairAddress} is not a contract on ${CHAIN_CONFIG[selectedChain].name}. Please verify the address and network.`);
+        setVisualizeLoading(false);
+        return;
+      }
+
       const pairContract = new ethers.Contract(pairAddress, PAIR_ABI, provider);
 
-      const [token0Address, token1Address] = await Promise.all([
-        pairContract.token0(),
-        pairContract.token1()
-      ]);
+      // Try to call token0() to verify it's a valid pair contract
+      let token0Address, token1Address;
+      try {
+        [token0Address, token1Address] = await Promise.all([
+          pairContract.token0(),
+          pairContract.token1()
+        ]);
+      } catch (err) {
+        console.error('Error calling pair contract methods:', err);
+        setError(`The address ${pairAddress} exists but is not a valid Uniswap V2 pair contract on ${CHAIN_CONFIG[selectedChain].name}. Make sure you're on the correct network.`);
+        setVisualizeLoading(false);
+        return;
+      }
 
       const [token0Data, token1Data] = await Promise.all([
         fetchTokenData(token0Address, provider),
@@ -516,7 +533,15 @@ const UniswapV2Interface = () => {
       }
     } catch (err) {
       console.error('Error fetching pair data:', err);
-      setError(`Failed to fetch pair data: ${err.message}`);
+
+      // Provide more helpful error messages
+      if (err.message.includes('network')) {
+        setError(`Network error: Unable to connect to ${CHAIN_CONFIG[selectedChain].name}. Please check your connection and try again.`);
+      } else if (err.message.includes('CALL_EXCEPTION')) {
+        setError(`Invalid pair contract on ${CHAIN_CONFIG[selectedChain].name}. Please verify the address and ensure you're on the correct network.`);
+      } else {
+        setError(`Failed to fetch pair data: ${err.message}`);
+      }
     } finally {
       setVisualizeLoading(false);
     }
@@ -1048,7 +1073,7 @@ const UniswapV2Interface = () => {
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8">
             <h2 className="text-3xl font-bold mb-6 text-gray-800 dark:text-white">Visualize Pair</h2>
 
-            <div className="flex gap-4 mb-8">
+            <div className="flex gap-4 mb-4">
               <input
                 type="text"
                 value={pairAddress}
@@ -1063,6 +1088,19 @@ const UniswapV2Interface = () => {
               >
                 {visualizeLoading ? 'Loading...' : 'Analyze'}
               </button>
+            </div>
+
+            {/* Info box for finding pair addresses */}
+            <div className="mb-8 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 dark:border-blue-600 p-4 rounded">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>💡 How to find pair addresses:</strong>
+              </p>
+              <ul className="text-sm text-blue-700 dark:text-blue-300 mt-2 ml-4 space-y-1">
+                <li>• Create a pair using the "Create" tab and get the pair address</li>
+                <li>• Visit {CHAIN_CONFIG[selectedChain].explorerUrl} and search for Uniswap V2 pairs</li>
+                <li>• Current network: <strong>{CHAIN_CONFIG[selectedChain].name}</strong></li>
+                <li>• Factory address: <code className="bg-blue-100 dark:bg-blue-800 px-1 py-0.5 rounded text-xs">{CHAIN_CONFIG[selectedChain].factoryAddress}</code></li>
+              </ul>
             </div>
 
             {pairData && (
