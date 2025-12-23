@@ -189,6 +189,58 @@ const UniswapV2Interface = () => {
     }
   };
 
+  // Switch chain (works with or without wallet connected)
+  const switchChain = async (newChain) => {
+    try {
+      setSelectedChain(newChain);
+
+      // If wallet is connected, switch the chain in MetaMask too
+      if (account && window.ethereum) {
+        const config = CHAIN_CONFIG[newChain];
+
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: `0x${config.chainId.toString(16)}` }],
+          });
+        } catch (switchError) {
+          // Chain not added, try to add it
+          if (switchError.code === 4902) {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: `0x${config.chainId.toString(16)}`,
+                chainName: config.name,
+                nativeCurrency: config.nativeCurrency,
+                rpcUrls: [config.rpcUrl],
+                blockExplorerUrls: [config.explorerUrl]
+              }]
+            });
+          } else if (switchError.code === 4001) {
+            // User rejected the request
+            setError('Chain switch rejected by user');
+            setTimeout(() => setError(''), 3000);
+            return;
+          } else {
+            throw switchError;
+          }
+        }
+
+        // Update provider and signer after chain switch
+        const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
+        const web3Signer = web3Provider.getSigner();
+        setSigner(web3Signer);
+
+        setSuccessMsg(`Switched to ${config.name}!`);
+        setTimeout(() => setSuccessMsg(''), 3000);
+      }
+    } catch (err) {
+      console.error('Error switching chain:', err);
+      setError(`Failed to switch chain: ${err.message}`);
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
   // Fetch token data
   const fetchTokenData = async (tokenAddress, providerOrSigner) => {
     try {
@@ -1008,16 +1060,8 @@ const UniswapV2Interface = () => {
               {/* Chain Selector */}
               <select
                 value={selectedChain}
-                onChange={(e) => {
-                  if (!account) {
-                    setSelectedChain(e.target.value);
-                  } else {
-                    setError('Please disconnect wallet before switching chains');
-                    setTimeout(() => setError(''), 3000);
-                  }
-                }}
-                disabled={account}
-                className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white hover:border-pink-400 dark:hover:border-pink-500 focus:outline-none focus:border-pink-500 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                onChange={(e) => switchChain(e.target.value)}
+                className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white hover:border-pink-400 dark:hover:border-pink-500 focus:outline-none focus:border-pink-500 transition-colors font-medium"
               >
                 <option value="sepolia">Sepolia Testnet</option>
                 <option value="mainnet">Ethereum Mainnet</option>
