@@ -18,7 +18,7 @@ const CHAIN_CONFIG = {
   base: {
     chainId: 8453,
     name: 'Base Mainnet',
-    rpcUrl: 'https://mainnet.base.org',
+    rpcUrl: 'https://base-mainnet.g.alchemy.com/v2/QnTJicdL-OSJilaE2y4wVXLy_XuFKmJB',
     explorerUrl: 'https://basescan.org',
     routerAddress: '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
     factoryAddress: '0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6',
