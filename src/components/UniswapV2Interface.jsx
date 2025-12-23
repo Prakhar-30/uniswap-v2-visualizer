@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { ethers } from 'ethers';
 
 // Chain configurations
-// NOTE: Sepolia and Base are enabled. Unichain is disabled in the UI.
+// NOTE: Sepolia testnet, ETH Mainnet and Base Mainnet are enabled. Unichain is disabled in the UI.
 const CHAIN_CONFIG = {
   sepolia: {
     chainId: 11155111,
@@ -12,6 +12,16 @@ const CHAIN_CONFIG = {
     explorerUrl: 'https://sepolia.etherscan.io',
     routerAddress: '0xC532a74256D3Db42D0Bf7a0400fEFDbad7694008',
     factoryAddress: '0x7E0987E5b3a30e3f2828572Bb659A548460a3003',
+    nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }
+  },
+  // Ethereum Mainnet - Uniswap V2
+  mainnet: {
+    chainId: 1,
+    name: 'Ethereum Mainnet',
+    rpcUrl: 'https://eth-mainnet.g.alchemy.com/v2/QnTJicdL-OSJilaE2y4wVXLy_XuFKmJB',
+    explorerUrl: 'https://etherscan.io',
+    routerAddress: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D',
+    factoryAddress: '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f',
     nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }
   },
   // Base Mainnet - Uniswap V2
@@ -92,7 +102,7 @@ const UniswapV2Interface = () => {
   const [pairData, setPairData] = useState(null);
   const [priceHistory, setPriceHistory] = useState([]);
   const [visualizeLoading, setVisualizeLoading] = useState(false);
-  const [selectedTimeRange, setSelectedTimeRange] = useState('1h');
+  const [selectedTimeRange, setSelectedTimeRange] = useState('1m');
   const [historyProgress, setHistoryProgress] = useState(0);
 
   // Create pair state
@@ -300,7 +310,24 @@ const UniswapV2Interface = () => {
       if (allowance.lt(amountWei)) {
         setSuccessMsg(`Approving ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}...`);
 
-        const approveTx = await tokenContract.approve(config.routerAddress, ethers.constants.MaxUint256);
+        // Use exact amount for approval to reduce MetaMask warnings
+        // Add 10% buffer to avoid requiring re-approval for small price changes
+        const approvalAmount = amountWei.mul(110).div(100);
+
+        // Estimate gas for approval
+        let gasEstimate;
+        try {
+          gasEstimate = await tokenContract.estimateGas.approve(config.routerAddress, approvalAmount);
+          // Add 20% buffer to gas estimate
+          gasEstimate = gasEstimate.mul(120).div(100);
+        } catch (e) {
+          console.log('Gas estimation failed, using default');
+          gasEstimate = ethers.BigNumber.from(100000);
+        }
+
+        const approveTx = await tokenContract.approve(config.routerAddress, approvalAmount, {
+          gasLimit: gasEstimate
+        });
         setSuccessMsg('Waiting for approval confirmation...');
 
         await approveTx.wait();
@@ -398,6 +425,26 @@ const UniswapV2Interface = () => {
       const path = [tokenIn, tokenOut];
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
 
+      setSuccessMsg('Estimating gas...');
+
+      // Estimate gas for the swap
+      let gasEstimate;
+      try {
+        gasEstimate = await routerContract.estimateGas.swapExactTokensForTokens(
+          amountInWei,
+          amountOutMin,
+          path,
+          account,
+          deadline
+        );
+        // Add 20% buffer to gas estimate for safety
+        gasEstimate = gasEstimate.mul(120).div(100);
+      } catch (err) {
+        console.log('Gas estimation failed:', err.message);
+        // Use a reasonable default if estimation fails
+        gasEstimate = ethers.BigNumber.from(250000);
+      }
+
       setSuccessMsg('Swapping tokens...');
 
       let swapTx;
@@ -407,7 +454,10 @@ const UniswapV2Interface = () => {
           amountOutMin,
           path,
           account,
-          deadline
+          deadline,
+          {
+            gasLimit: gasEstimate
+          }
         );
       } catch (err) {
         console.error('Transaction error:', err);
@@ -574,16 +624,15 @@ const UniswapV2Interface = () => {
       setPriceHistory([]); // Clear existing data
       const currentBlock = await provider.getBlockNumber();
 
-      // Optimized time ranges for Sepolia (12 second blocks)
+      // Optimized time ranges for 12 second blocks (Ethereum/Sepolia)
       const timeRangeConfig = {
-        '15m': { blocks: 75, step: 3, label: '15 Minutes', dataPoints: 25 },      // 15 mins
-        '30m': { blocks: 150, step: 6, label: '30 Minutes', dataPoints: 25 },     // 30 mins
-        '1h': { blocks: 300, step: 12, label: '1 Hour', dataPoints: 25 },         // 1 hour
-        '6h': { blocks: 1800, step: 72, label: '6 Hours', dataPoints: 25 },       // 6 hours
-        '24h': { blocks: 7200, step: 288, label: '24 Hours', dataPoints: 25 },    // 24 hours
+        '1m': { blocks: 5, step: 1, label: '1 Minute', dataPoints: 5 },          // 1 min
+        '5m': { blocks: 25, step: 1, label: '5 Minutes', dataPoints: 25 },       // 5 mins
+        '15m': { blocks: 75, step: 3, label: '15 Minutes', dataPoints: 25 },     // 15 mins
+        '30m': { blocks: 150, step: 6, label: '30 Minutes', dataPoints: 25 },    // 30 mins
       };
 
-      const config = timeRangeConfig[timeRange] || timeRangeConfig['1h'];
+      const config = timeRangeConfig[timeRange] || timeRangeConfig['1m'];
       const totalBlocks = config.blocks;
       const blockStep = config.step;
       const dataPoints = config.dataPoints;
@@ -611,10 +660,8 @@ const UniswapV2Interface = () => {
 
             // Format date based on time range
             let dateLabel;
-            if (timeRange === '15m' || timeRange === '30m') {
+            if (timeRange === '1m' || timeRange === '5m') {
               dateLabel = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            } else if (timeRange === '1h' || timeRange === '6h') {
-              dateLabel = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
             } else {
               dateLabel = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
             }
@@ -785,7 +832,19 @@ const UniswapV2Interface = () => {
         setSuccessMsg('Creating pair...');
 
         try {
-          const createTx = await factoryContract.createPair(tokenA, tokenB);
+          // Estimate gas for pair creation
+          let gasEstimate;
+          try {
+            gasEstimate = await factoryContract.estimateGas.createPair(tokenA, tokenB);
+            gasEstimate = gasEstimate.mul(120).div(100);
+          } catch (e) {
+            console.log('Gas estimation failed, using default');
+            gasEstimate = ethers.BigNumber.from(500000);
+          }
+
+          const createTx = await factoryContract.createPair(tokenA, tokenB, {
+            gasLimit: gasEstimate
+          });
           setSuccessMsg('Waiting for pair creation...');
           const receipt = await createTx.wait();
 
@@ -850,6 +909,28 @@ const UniswapV2Interface = () => {
         const amountBMin = ethers.utils.parseUnits((parseFloat(amountBCleaned) * 0.99).toFixed(tokenBData.decimals), tokenBData.decimals);
         const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
 
+        setSuccessMsg('Estimating gas...');
+
+        // Estimate gas for adding liquidity
+        let gasEstimate;
+        try {
+          gasEstimate = await routerContract.estimateGas.addLiquidity(
+            tokenA,
+            tokenB,
+            amountAWei,
+            amountBWei,
+            amountAMin,
+            amountBMin,
+            account,
+            deadline
+          );
+          // Add 20% buffer to gas estimate
+          gasEstimate = gasEstimate.mul(120).div(100);
+        } catch (e) {
+          console.log('Gas estimation failed, using default');
+          gasEstimate = ethers.BigNumber.from(300000);
+        }
+
         setSuccessMsg('Adding liquidity...');
         const liquidityTx = await routerContract.addLiquidity(
           tokenA,
@@ -859,7 +940,10 @@ const UniswapV2Interface = () => {
           amountAMin,
           amountBMin,
           account,
-          deadline
+          deadline,
+          {
+            gasLimit: gasEstimate
+          }
         );
 
         setSuccessMsg('Waiting for confirmation...');
@@ -924,10 +1008,19 @@ const UniswapV2Interface = () => {
               {/* Chain Selector */}
               <select
                 value={selectedChain}
-                onChange={(e) => setSelectedChain(e.target.value)}
-                className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white hover:border-pink-400 dark:hover:border-pink-500 focus:outline-none focus:border-pink-500 transition-colors font-medium"
+                onChange={(e) => {
+                  if (!account) {
+                    setSelectedChain(e.target.value);
+                  } else {
+                    setError('Please disconnect wallet before switching chains');
+                    setTimeout(() => setError(''), 3000);
+                  }
+                }}
+                disabled={account}
+                className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white hover:border-pink-400 dark:hover:border-pink-500 focus:outline-none focus:border-pink-500 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value="sepolia">Sepolia</option>
+                <option value="sepolia">Sepolia Testnet</option>
+                <option value="mainnet">Ethereum Mainnet</option>
                 <option value="base">Base Mainnet</option>
                 <option value="unichain" disabled>Unichain Sepolia (Coming Soon)</option>
               </select>
@@ -1143,7 +1236,7 @@ const UniswapV2Interface = () => {
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-2xl font-bold text-gray-800 dark:text-white">Price History</h3>
                     <div className="flex gap-2">
-                      {['15m', '30m', '1h', '6h', '24h'].map((range) => (
+                      {['1m', '5m', '15m', '30m'].map((range) => (
                         <button
                           key={range}
                           onClick={() => handleTimeRangeChange(range)}
