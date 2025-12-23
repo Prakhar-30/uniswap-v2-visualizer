@@ -138,6 +138,40 @@ const UniswapV2Interface = () => {
     initProvider();
   }, [selectedChain]);
 
+  // Listen for chain changes in MetaMask
+  useEffect(() => {
+    if (!window.ethereum) return;
+
+    const handleChainChanged = (chainIdHex) => {
+      const chainIdDecimal = parseInt(chainIdHex, 16);
+      console.log('Chain changed to:', chainIdDecimal);
+
+      // Find matching chain in config
+      const matchingChain = Object.entries(CHAIN_CONFIG).find(
+        ([key, config]) => config.chainId === chainIdDecimal
+      );
+
+      if (matchingChain) {
+        const [chainKey, chainConfig] = matchingChain;
+        setSelectedChain(chainKey);
+        setSuccessMsg(`Switched to ${chainConfig.name}`);
+        setTimeout(() => setSuccessMsg(''), 3000);
+
+        // Reload the page to reset state
+        window.location.reload();
+      } else {
+        setError(`Unsupported chain (Chain ID: ${chainIdDecimal}). Please switch to Sepolia, Ethereum Mainnet, or Base Mainnet.`);
+        setTimeout(() => setError(''), 5000);
+      }
+    };
+
+    window.ethereum.on('chainChanged', handleChainChanged);
+
+    return () => {
+      window.ethereum.removeListener('chainChanged', handleChainChanged);
+    };
+  }, []);
+
   // Connect wallet
   const connectWallet = async () => {
     try {
@@ -1008,15 +1042,56 @@ const UniswapV2Interface = () => {
               {/* Chain Selector */}
               <select
                 value={selectedChain}
-                onChange={(e) => {
-                  if (!account) {
-                    setSelectedChain(e.target.value);
-                  } else {
-                    setError('Please disconnect wallet before switching chains');
+                onChange={async (e) => {
+                  const newChain = e.target.value;
+
+                  if (account && window.ethereum) {
+                    // Wallet is connected, switch MetaMask chain
+                    try {
+                      const config = CHAIN_CONFIG[newChain];
+                      await window.ethereum.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: `0x${config.chainId.toString(16)}` }],
+                      });
+                      setSelectedChain(newChain);
+                      setSuccessMsg(`Switched to ${config.name}`);
+                      setTimeout(() => setSuccessMsg(''), 3000);
+                    } catch (switchError) {
+                      // Chain not added to MetaMask, try to add it
+                      if (switchError.code === 4902) {
+                        try {
+                          const config = CHAIN_CONFIG[newChain];
+                          await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                              chainId: `0x${config.chainId.toString(16)}`,
+                              chainName: config.name,
+                              nativeCurrency: config.nativeCurrency,
+                              rpcUrls: [config.rpcUrl],
+                              blockExplorerUrls: [config.explorerUrl]
+                            }]
+                          });
+                          setSelectedChain(newChain);
+                          setSuccessMsg(`Added and switched to ${config.name}`);
+                          setTimeout(() => setSuccessMsg(''), 3000);
+                        } catch (addError) {
+                          setError(`Failed to add chain: ${addError.message}`);
+                          setTimeout(() => setError(''), 3000);
+                        }
+                      } else if (switchError.code === 4001) {
+                        setError('Chain switch rejected by user');
+                        setTimeout(() => setError(''), 3000);
+                      } else {
+                        setError(`Failed to switch chain: ${switchError.message}`);
+                        setTimeout(() => setError(''), 3000);
+                      }
+                    }
+                  } else if (!account) {
+                    setError('Please connect wallet first to switch chains');
                     setTimeout(() => setError(''), 3000);
                   }
                 }}
-                disabled={account}
+                disabled={!account}
                 className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white hover:border-pink-400 dark:hover:border-pink-500 focus:outline-none focus:border-pink-500 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="sepolia">Sepolia Testnet</option>
