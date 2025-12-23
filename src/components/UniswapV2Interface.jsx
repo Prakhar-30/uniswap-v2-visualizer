@@ -4,13 +4,6 @@ import { ethers } from 'ethers';
 
 // Chain configurations
 // NOTE: Sepolia testnet, ETH Mainnet and Base Mainnet are enabled. Unichain is disabled in the UI.
-//
-// IMPORTANT - MetaMask Security Warnings:
-// Some chains (especially Sepolia testnet) use custom Uniswap V2 deployments that may not be
-// recognized by MetaMask's security provider (Blockaid). This can trigger security warnings.
-// Users should ALWAYS verify contract addresses on the block explorer before proceeding.
-// The app now displays clear warnings and provides links to verify contracts.
-//
 // For Mainnet chains (Ethereum, Base), these are official Uniswap V2 deployments.
 // For testnets, these may be community deployments - users should verify before use.
 const CHAIN_CONFIG = {
@@ -371,8 +364,6 @@ const UniswapV2Interface = () => {
       if (allowance.lt(amountWei)) {
         setSuccessMsg(`Approving ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}...`);
 
-        // Use EXACT amount for approval to minimize MetaMask security warnings
-        // This prevents "unlimited approval" warnings from MetaMask
         const approvalAmount = amountWei;
 
         // Estimate gas for approval
@@ -1161,62 +1152,6 @@ const UniswapV2Interface = () => {
         {/* SWAP TAB */}
         {activeTab === 'swap' && (
           <div className="max-w-md mx-auto">
-            {/* Security Information Banner */}
-            <div className="mb-4 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-600 p-4 rounded-lg">
-              <div className="flex items-start">
-                <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
-                    MetaMask Security Warnings
-                  </p>
-                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                    {selectedChain === 'sepolia' && (
-                      <>You may see security warnings from MetaMask when swapping on Sepolia testnet. This is because the router contract may not be recognized by MetaMask's security provider. Always verify contract addresses before proceeding.</>
-                    )}
-                    {selectedChain !== 'sepolia' && (
-                      <>If you see security warnings, please verify you trust the contract addresses below before proceeding. Only interact with verified contracts.</>
-                    )}
-                  </p>
-                  <details className="mt-2">
-                    <summary className="text-xs font-medium text-yellow-800 dark:text-yellow-200 cursor-pointer hover:underline">
-                      View Contract Addresses
-                    </summary>
-                    <div className="mt-2 text-xs font-mono bg-yellow-100 dark:bg-yellow-900/30 p-2 rounded space-y-1">
-                      <div>
-                        <span className="font-semibold">Router:</span>
-                        <br />
-                        <a
-                          href={`${CHAIN_CONFIG[selectedChain].explorerUrl}/address/${CHAIN_CONFIG[selectedChain].routerAddress}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 dark:text-blue-400 hover:underline break-all"
-                        >
-                          {CHAIN_CONFIG[selectedChain].routerAddress}
-                        </a>
-                      </div>
-                      <div>
-                        <span className="font-semibold">Factory:</span>
-                        <br />
-                        <a
-                          href={`${CHAIN_CONFIG[selectedChain].explorerUrl}/address/${CHAIN_CONFIG[selectedChain].factoryAddress}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 dark:text-blue-400 hover:underline break-all"
-                        >
-                          {CHAIN_CONFIG[selectedChain].factoryAddress}
-                        </a>
-                      </div>
-                    </div>
-                  </details>
-                  <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-2 font-medium">
-                    ⚠️ If MetaMask shows warnings, click "I have acknowledged the risk" only if you've verified the contracts are legitimate.
-                  </p>
-                </div>
-              </div>
-            </div>
-
             <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-6 border border-gray-100 dark:border-gray-700">
               <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white">Swap Tokens</h2>
 
@@ -1521,54 +1456,6 @@ const UniswapV2Interface = () => {
         {/* CREATE PAIR TAB */}
         {activeTab === 'create' && (
           <div className="max-w-2xl mx-auto">
-            {/* Security Information Banner */}
-            <div className="mb-4 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-600 p-4 rounded-lg">
-              <div className="flex items-start">
-                <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
-                    Security Notice
-                  </p>
-                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                    You may see security warnings from MetaMask during pair creation and liquidity addition. Verify the contract addresses below before proceeding.
-                  </p>
-                  <details className="mt-2">
-                    <summary className="text-xs font-medium text-yellow-800 dark:text-yellow-200 cursor-pointer hover:underline">
-                      View Contract Addresses
-                    </summary>
-                    <div className="mt-2 text-xs font-mono bg-yellow-100 dark:bg-yellow-900/30 p-2 rounded space-y-1">
-                      <div>
-                        <span className="font-semibold">Router:</span>
-                        <br />
-                        <a
-                          href={`${CHAIN_CONFIG[selectedChain].explorerUrl}/address/${CHAIN_CONFIG[selectedChain].routerAddress}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 dark:text-blue-400 hover:underline break-all"
-                        >
-                          {CHAIN_CONFIG[selectedChain].routerAddress}
-                        </a>
-                      </div>
-                      <div>
-                        <span className="font-semibold">Factory:</span>
-                        <br />
-                        <a
-                          href={`${CHAIN_CONFIG[selectedChain].explorerUrl}/address/${CHAIN_CONFIG[selectedChain].factoryAddress}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 dark:text-blue-400 hover:underline break-all"
-                        >
-                          {CHAIN_CONFIG[selectedChain].factoryAddress}
-                        </a>
-                      </div>
-                    </div>
-                  </details>
-                </div>
-              </div>
-            </div>
-
             <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8">
               <h2 className="text-3xl font-bold mb-6 text-gray-800 dark:text-white">Create Pair & Add Liquidity</h2>
 
